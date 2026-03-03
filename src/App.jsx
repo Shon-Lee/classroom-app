@@ -1858,6 +1858,9 @@ export default function App() {
         const session = JSON.parse(savedSession);
         setUser(session.user);
         setRole(session.role);
+        if (session.accessToken) {
+          accessToken = session.accessToken;
+        }
         setStudents(session.students || STUDENTS_INIT);
         setStaff(session.staff || STAFF_INIT);
         setClasses(session.classes || CLASSES_INIT);
@@ -1936,6 +1939,7 @@ export default function App() {
       localStorage.setItem('classroomSession', JSON.stringify({
         user,
         role,
+        accessToken,
         students,
         staff,
         classes,
@@ -2006,6 +2010,7 @@ export default function App() {
       localStorage.setItem('classroomSession', JSON.stringify({
         user: fullUser,
         role: userRole,
+        accessToken,
         students: loadedStudents,
         staff: loadedStaff,
         classes: loadedClasses,
