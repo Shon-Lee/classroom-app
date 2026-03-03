@@ -384,7 +384,9 @@ function Tabs({ tabs, active, onChange }) {
 
 // ─── TOP BAR ───────────────────────────────────────────────────────────────
 
-function TopBar({ role, setRole, userName, ticketCount }) {
+function TopBar({ role, setRole, userName, ticketCount, onSignOut }) {
+  const [showMenu, setShowMenu] = useState(false);
+  
   return (
     <div style={{ height: 66, background: T.surface, borderBottom: `1px solid ${T.border}`, display: "flex", alignItems: "center", padding: "0 28px", gap: 16, position: "sticky", top: 0, zIndex: 100 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: "auto" }}>
@@ -404,12 +406,22 @@ function TopBar({ role, setRole, userName, ticketCount }) {
         🔔
         {ticketCount > 0 && role === "Admin" && <span style={{ position: "absolute", top: 7, right: 7, width: 8, height: 8, background: "#E53E3E", borderRadius: "50%", border: `2px solid ${T.surface}` }} />}
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
-        <Avatar name={userName} size={38} />
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3 }}>{userName.split(" ")[0]}</div>
-          <div style={{ fontSize: 11, color: T.muted }}>{role}</div>
+      <div style={{ position: "relative" }}>
+        <div onClick={() => setShowMenu(!showMenu)} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+          <Avatar name={userName} size={38} />
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: T.text, lineHeight: 1.3 }}>{userName.split(" ")[0]}</div>
+            <div style={{ fontSize: 11, color: T.muted }}>{role}</div>
+          </div>
         </div>
+        {showMenu && (
+          <>
+            <div onClick={() => setShowMenu(false)} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 150 }} />
+            <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 8, background: T.surface, border: `1px solid ${T.border}`, borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 180, zIndex: 151 }}>
+              <button onClick={() => { setShowMenu(false); onSignOut(); }} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "none", border: "none", cursor: "pointer", fontSize: 14, fontWeight: 500, color: T.text, fontFamily: "inherit", textAlign: "left", borderRadius: 12 }}>🚪 Sign Out</button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -1824,7 +1836,7 @@ export default function App() {
   // User authentication state
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // App state
   const [section, setSection]         = useState("Dashboard");
@@ -1837,6 +1849,31 @@ export default function App() {
   const [knowledge, setKnowledge]     = useState(KNOWLEDGE_INIT);
   const [studentTasks, setStudentTasks] = useState(STUDENT_TASKS_INIT);
   const [submissions, setSubmissions] = useState(SUBMISSIONS_DATA);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const savedSession = localStorage.getItem('classroomSession');
+    if (savedSession) {
+      try {
+        const session = JSON.parse(savedSession);
+        setUser(session.user);
+        setRole(session.role);
+        setStudents(session.students || STUDENTS_INIT);
+        setStaff(session.staff || STAFF_INIT);
+        setClasses(session.classes || CLASSES_INIT);
+        setAnnouncements(session.announcements || ANNOUNCEMENTS_INIT);
+        setStaffTasks(session.staffTasks || STAFF_TASKS_INIT);
+        setTickets(session.tickets || TICKETS_INIT);
+        setKnowledge(session.knowledge || KNOWLEDGE_INIT);
+        setStudentTasks(session.studentTasks || STUDENT_TASKS_INIT);
+        setSubmissions(session.submissions || SUBMISSIONS_DATA);
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        localStorage.removeItem('classroomSession');
+      }
+    }
+    setLoading(false);
+  }, []);
 
   // Handle Google Sign-In
   async function handleSignIn(userInfo) {
@@ -1887,14 +1924,38 @@ export default function App() {
         setStudents([...loadedStudents, finalUserData]);
       }
       
-      setUser({ ...userInfo, ...finalUserData });
+      const fullUser = { ...userInfo, ...finalUserData };
+      setUser(fullUser);
       setRole(userRole);
+      
+      // Save session to localStorage
+      localStorage.setItem('classroomSession', JSON.stringify({
+        user: fullUser,
+        role: userRole,
+        students: loadedStudents,
+        staff: loadedStaff,
+        classes: loadedClasses,
+        announcements: loadedAnnouncements,
+        staffTasks: loadedStaffTasks,
+        tickets: loadedTickets,
+        knowledge: loadedKnowledge,
+        studentTasks: loadedStudentTasks,
+        submissions: loadedSubmissions
+      }));
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Failed to load data from Google Sheets. Check console for details.");
     }
     
     setLoading(false);
+  }
+
+  // Handle Sign Out
+  function handleSignOut() {
+    localStorage.removeItem('classroomSession');
+    setUser(null);
+    setRole(null);
+    setSection("Dashboard");
   }
 
   useEffect(() => { setSection("Dashboard"); }, [role]);
@@ -1968,7 +2029,7 @@ export default function App() {
         select option { background: #fff; color: ${T.text}; }
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
-      <TopBar role={role} setRole={setRole} userName={userName} ticketCount={openTicketCount} />
+      <TopBar role={role} setRole={setRole} userName={userName} ticketCount={openTicketCount} onSignOut={handleSignOut} />
       <div style={{ display: "flex", height: "calc(100vh - 66px)", width: "100vw" }}>
         <Sidebar role={role} active={section} setActive={setSection} ticketBadge={openTicketCount} />
         <main style={{ flex: 1, overflowY: "auto", padding: "34px 40px", minWidth: 0 }}>
