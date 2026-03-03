@@ -1,162 +1,74 @@
 import { useState, useEffect } from "react";
+import { auth, db, signInWithGoogle as firebaseSignIn, logOut, onAuthChange } from './firebase';
+import { collection, getDocs, addDoc, doc, setDoc, query, where, onSnapshot } from 'firebase/firestore';
 
-// ─── GOOGLE API CONFIGURATION ─────────────────────────────────────────────
-// Add your Google API credentials here
-const GOOGLE_CONFIG = {
-  clientId: "783727248696-tnc8lnu3mtuheb2gqhlnu79k89obbur2.apps.googleusercontent.com",
-  apiKey: "AIzaSyDmuJgZTpIxQQkS2orSgTKsc4QwJ1iKQdc",
-  spreadsheetId: "1g2fevLQ4vMuyLceuGodd2k5XvRbLpDGm6RA8Yy6Vd64", // The ID of your Google Sheet
-  scopes: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
+// ─── FIREBASE CONFIGURATION ─────────────────────────────────────────────
+// Update your Firebase config in src/firebase.js
+const ADMIN_EMAIL = "lebuibaoson.work@gmail.com";
+
+// Firestore collection names
+const COLLECTIONS = {
+  CLASSES: "classes",
+  STUDENTS: "students",
+  STAFF: "staff",
+  KNOWLEDGE: "knowledge",
+  ANNOUNCEMENTS: "announcements",
+  TASKS: "tasks",
+  STUDENT_TASKS: "studentTasks",
+  TICKETS: "tickets",
+  SUBMISSIONS: "submissions",
+  STAFF_TASKS: "staffTasks"
 };
 
-// Sheet names (tabs) in your Google Spreadsheet
-const SHEET_NAMES = {
-  CLASSES: "Classes",
-  STUDENTS: "Students",
-  STAFF: "Staff",
-  KNOWLEDGE: "Knowledge",
-  ANNOUNCEMENTS: "Announcements",
-  TASKS: "Tasks",
-  STUDENT_TASKS: "StudentTasks",
-  TICKETS: "Tickets",
-  SUBMISSIONS: "Submissions",
-  STAFF_TASKS: "StaffTasks"
-};
+// ─── FIREBASE HELPER FUNCTIONS ────────────────────────────────────────────
 
-// ─── GOOGLE SHEETS DATA SERVICE ───────────────────────────────────────────
-let gapiInited = false;
-let gisInited = false;
-let tokenClient = null;
-let accessToken = null;
-
-// Initialize Google API
-function gapiInit() {
-  return new Promise((resolve) => {
-    if (typeof gapi !== 'undefined') {
-      gapi.load('client', async () => {
-        await gapi.client.init({
-          apiKey: GOOGLE_CONFIG.apiKey,
-          discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'],
-        });
-        gapiInited = true;
-        resolve();
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-// Initialize Google Identity Services
-function gisInit() {
-  return new Promise((resolve) => {
-    if (typeof google !== 'undefined' && google.accounts) {
-      tokenClient = google.accounts.oauth2.initTokenClient({
-        client_id: GOOGLE_CONFIG.clientId,
-        scope: GOOGLE_CONFIG.scopes,
-        callback: '', // Will be set later
-      });
-      gisInited = true;
-      resolve();
-    } else {
-      resolve();
-    }
-  });
-}
-
-// Get data from Google Sheets
-async function getSheetData(sheetName, range = 'A:Z') {
-  if (!accessToken) return [];
-  
+// Get all documents from a collection
+async function getCollectionData(collectionName) {
   try {
-    const response = await gapi.client.sheets.spreadsheets.values.get({
-      spreadsheetId: GOOGLE_CONFIG.spreadsheetId,
-      range: `${sheetName}!${range}`,
-    });
-    
-    const rows = response.result.values || [];
-    if (rows.length === 0) return [];
-    
-    // Convert rows to objects using first row as headers
-    const headers = rows[0];
-    return rows.slice(1).map(row => {
-      const obj = {};
-      headers.forEach((header, index) => {
-        obj[header] = row[index] || '';
-      });
-      return obj;
-    });
+    const snapshot = await getDocs(collection(db, collectionName));
+    return snapshot.docs.map(doc => ({ 
+      firestoreId: doc.id,  // Keep Firestore ID separate
+      ...doc.data() 
+    }));
   } catch (error) {
-    console.error(`Error reading ${sheetName}:`, error);
+    console.error(`Error reading ${collectionName}:`, error);
     return [];
   }
 }
 
-// Update data in Google Sheets
-async function updateSheetData(sheetName, data) {
-  console.log(`🔄 Sync triggered for ${sheetName} with ${data?.length || 0} rows`);
-  console.log(`🔑 accessToken available:`, !!accessToken);
-  
-  if (!accessToken) {
-    console.warn(`⚠️ Cannot sync ${sheetName}: No access token. Please sign out and sign back in.`);
-    return;
-  }
-  if (!data || data.length === 0) {
-    console.log(`⏭️ Skipping ${sheetName}: No data to sync`);
-    return;
-  }
-  
+// Add a document to a collection
+async function addDocument(collectionName, data) {
   try {
-    console.log(`📤 Syncing ${data.length} rows to ${sheetName}...`);
-    
-    // Get headers from first object
-    const headers = Object.keys(data[0]);
-    const rows = [headers, ...data.map(obj => headers.map(h => obj[h] || ''))];
-    
-    const response = await gapi.client.sheets.spreadsheets.values.update({
-      spreadsheetId: GOOGLE_CONFIG.spreadsheetId,
-      range: `${sheetName}!A:Z`,
-      valueInputOption: 'RAW',
-      resource: { values: rows },
-    });
-    
-    console.log(`✅ Successfully synced ${sheetName}: ${response.result.updatedRows} rows`);
+    const docRef = await addDoc(collection(db, collectionName), data);
+    return { firestoreId: docRef.id, ...data };
   } catch (error) {
-    console.error(`❌ Error updating ${sheetName}:`, error);
-    if (error.status === 401) {
-      console.error('🔑 Access token expired. Please sign out and sign back in.');
-    }
+    console.error(`Error adding to ${collectionName}:`, error);
+    throw error;
   }
 }
 
-// Append row to Google Sheets
-async function appendSheetData(sheetName, data) {
-  if (!accessToken) {
-    console.error(`❌ Cannot append to ${sheetName}: No access token`);
-    return;
-  }
-  if (!data) {
-    console.error(`❌ Cannot append to ${sheetName}: No data provided`);
-    return;
-  }
-  
+// Update entire collection (for bulk updates)
+async function updateCollection(collectionName, dataArray) {
   try {
-    console.log(`📝 Appending row to ${sheetName}:`, data);
-    const values = [Object.values(data)];
-    const response = await gapi.client.sheets.spreadsheets.values.append({
-      spreadsheetId: GOOGLE_CONFIG.spreadsheetId,
-      range: `${sheetName}!A:A`,
-      valueInputOption: 'RAW',
-      resource: { values },
-    });
-    console.log(`✅ Successfully appended to ${sheetName}:`, response.result);
-  } catch (error) {
-    console.error(`❌ Error appending to ${sheetName}:`, error);
-    if (error.status === 401) {
-      console.error('🔑 Access token expired. Please sign out and sign back in.');
+    const batch = [];
+    for (const item of dataArray) {
+      if (item.firestoreId) {
+        // Update existing document
+        batch.push(setDoc(doc(db, collectionName, item.firestoreId), item));
+      } else {
+        // Add new document
+        batch.push(addDoc(collection(db, collectionName), item));
+      }
     }
+    await Promise.all(batch);
+    console.log(`✅ Successfully synced ${collectionName}`);
+  } catch (error) {
+    console.error(`Error updating ${collectionName}:`, error);
   }
 }
+
+// ─── GOOGLE SHEETS FUNCTIONS REMOVED ──────────────────────────────────────
+// All Google Sheets API code has been replaced with Firebase above
 
 // ─── ICON COMPONENTS ──────────────────────────────────────────────────────
 const Icon = {
@@ -507,66 +419,24 @@ function GoogleSignIn({ onSignIn }) {
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    // Load Google API scripts
-    const script1 = document.createElement('script');
-    script1.src = 'https://apis.google.com/js/api.js';
-    script1.async = true;
-    script1.defer = true;
-    script1.onload = () => gapiInit();
-    document.body.appendChild(script1);
-
-    const script2 = document.createElement('script');
-    script2.src = 'https://accounts.google.com/gsi/client';
-    script2.async = true;
-    script2.defer = true;
-    script2.onload = () => gisInit();
-    document.body.appendChild(script2);
-
-    return () => {
-      document.body.removeChild(script1);
-      document.body.removeChild(script2);
-    };
-  }, []);
-
   async function handleSignIn() {
     setLoading(true);
     setError("");
 
-    // Check if APIs are initialized
-    if (!gapiInited || !gisInited) {
-      setError("Google APIs not loaded yet. Please try again.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      // Request authorization and get access token
-      tokenClient.callback = async (response) => {
-        if (response.error) {
-          setError("Authorization failed. Please try again.");
-          setLoading(false);
-          return;
-        }
-
-        accessToken = response.access_token;
-
-        // Get user info
-        const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` }
+      const result = await firebaseSignIn();
+      const user = result.user;
+      
+      setDone(true);
+      setTimeout(() => {
+        onSignIn({
+          name: user.displayName,
+          email: user.email,
+          picture: user.photoURL
         });
-        const userInfo = await userInfoResponse.json();
-
-        setDone(true);
-        setTimeout(() => {
-          onSignIn(userInfo); // Pass user info to parent
-        }, 1200);
-      };
-
-      // Trigger the authorization flow
-      tokenClient.requestAccessToken({ prompt: 'consent' });
+      }, 800);
     } catch (err) {
-      setError("Sign-in failed. Please try again.");
+      setError(err.message || "Sign-in failed. Please try again.");
       setLoading(false);
       console.error("Sign-in error:", err);
     }
@@ -1807,7 +1677,7 @@ function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, 
 
 // ─── DATA SYNC AND USER HELPERS ────────────────────────────────────────────
 
-// Determine user role from email and Google Sheets data
+// Determine user role from email and Firestore data
 async function determineUserRole(email, students, staff) {
   // Check if admin (you can customize this logic)
   const adminEmails = ["lebuibaoson.work@gmail.com"];
@@ -1831,7 +1701,7 @@ async function determineUserRole(email, students, staff) {
   return { role: "Student", userData: null, isNewUser: true };
 }
 
-// Create new student in Google Sheets
+// Create new student in Firestore
 async function createNewStudent(userInfo) {
   console.log(`👤 Creating new student:`, userInfo);
   
@@ -1847,8 +1717,9 @@ async function createNewStudent(userInfo) {
   };
   
   console.log(`📋 New student record:`, newStudent);
-  await appendSheetData(SHEET_NAMES.STUDENTS, newStudent);
-  console.log(`✅ Student created and appended to sheet`);
+  const docRef = await addDoc(collection(db, COLLECTIONS.STUDENTS), newStudent);
+  newStudent.firestoreId = docRef.id;
+  console.log(`✅ Student created in Firestore with ID: ${docRef.id}`);
   
   return newStudent;
 }
@@ -1884,78 +1755,28 @@ export default function App() {
   const [studentTasks, setStudentTasks] = useState(STUDENT_TASKS_INIT);
   const [submissions, setSubmissions] = useState(SUBMISSIONS_DATA);
 
-  // Check for existing session on mount
+  // Firebase Auth state listener - check for authenticated user
   useEffect(() => {
-    const savedSession = localStorage.getItem('classroomSession');
-    if (savedSession) {
-      // Session persistence is disabled because OAuth tokens expire
-      // Users must sign in fresh each time to get a valid access token for Google Sheets sync
-      console.log('⚠️ Clearing saved session - fresh sign-in required for Google Sheets sync');
-      localStorage.removeItem('classroomSession');
-    }
-    setLoading(false);
+    const unsubscribe = onAuthChange((firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in - will load data in handleSignIn
+        console.log('✅ Firebase user authenticated:', firebaseUser.email);
+      } else {
+        // User is signed out
+        setLoading(false);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Auto-sync data to Google Sheets when state changes
-  useEffect(() => {
-    if (user && students.length > 0) {
-      updateSheetData(SHEET_NAMES.STUDENTS, students).catch(err => console.error('Failed to sync students:', err));
-    }
-  }, [students, user]);
+  // Note: Firebase auto-syncs data on write operations (addDoc, setDoc, updateDoc)
+  // No manual sync hooks needed - data is written directly to Firestore in each operation
 
-  useEffect(() => {
-    if (user && staff.length > 0) {
-      updateSheetData(SHEET_NAMES.STAFF, staff).catch(err => console.error('Failed to sync staff:', err));
-    }
-  }, [staff, user]);
-
-  useEffect(() => {
-    if (user && classes.length > 0) {
-      updateSheetData(SHEET_NAMES.CLASSES, classes).catch(err => console.error('Failed to sync classes:', err));
-    }
-  }, [classes, user]);
-
-  useEffect(() => {
-    if (user && announcements.length > 0) {
-      updateSheetData(SHEET_NAMES.ANNOUNCEMENTS, announcements).catch(err => console.error('Failed to sync announcements:', err));
-    }
-  }, [announcements, user]);
-
-  useEffect(() => {
-    if (user && staffTasks.length > 0) {
-      updateSheetData(SHEET_NAMES.STAFF_TASKS, staffTasks).catch(err => console.error('Failed to sync staff tasks:', err));
-    }
-  }, [staffTasks, user]);
-
-  useEffect(() => {
-    if (user && tickets.length > 0) {
-      updateSheetData(SHEET_NAMES.TICKETS, tickets).catch(err => console.error('Failed to sync tickets:', err));
-    }
-  }, [tickets, user]);
-
-  useEffect(() => {
-    if (user && knowledge.length > 0) {
-      updateSheetData(SHEET_NAMES.KNOWLEDGE, knowledge).catch(err => console.error('Failed to sync knowledge:', err));
-    }
-  }, [knowledge, user]);
-
-  useEffect(() => {
-    if (user && studentTasks.length > 0) {
-      updateSheetData(SHEET_NAMES.STUDENT_TASKS, studentTasks).catch(err => console.error('Failed to sync student tasks:', err));
-    }
-  }, [studentTasks, user]);
-
-  useEffect(() => {
-    if (user && submissions.length > 0) {
-      updateSheetData(SHEET_NAMES.SUBMISSIONS, submissions).catch(err => console.error('Failed to sync submissions:', err));
-    }
-  }, [submissions, user]);
-
-  // Handle Google Sign-In
+  // Handle Firebase Sign-In
   async function handleSignIn(userInfo) {
     setLoading(true);
     
-    // Load ALL data from Google Sheets
+    // Load ALL data from Firestore
     try {
       const [
         loadedClasses,
@@ -1968,15 +1789,15 @@ export default function App() {
         loadedStudentTasks,
         loadedSubmissions
       ] = await Promise.all([
-        getSheetData(SHEET_NAMES.CLASSES),
-        getSheetData(SHEET_NAMES.STUDENTS),
-        getSheetData(SHEET_NAMES.STAFF),
-        getSheetData(SHEET_NAMES.KNOWLEDGE),
-        getSheetData(SHEET_NAMES.ANNOUNCEMENTS),
-        getSheetData(SHEET_NAMES.STAFF_TASKS),
-        getSheetData(SHEET_NAMES.TICKETS),
-        getSheetData(SHEET_NAMES.STUDENT_TASKS),
-        getSheetData(SHEET_NAMES.SUBMISSIONS)
+        getCollectionData(COLLECTIONS.CLASSES),
+        getCollectionData(COLLECTIONS.STUDENTS),
+        getCollectionData(COLLECTIONS.STAFF),
+        getCollectionData(COLLECTIONS.KNOWLEDGE),
+        getCollectionData(COLLECTIONS.ANNOUNCEMENTS),
+        getCollectionData(COLLECTIONS.STAFF_TASKS),
+        getCollectionData(COLLECTIONS.TICKETS),
+        getCollectionData(COLLECTIONS.STUDENT_TASKS),
+        getCollectionData(COLLECTIONS.SUBMISSIONS)
       ]);
       
       // Update all state with loaded data
@@ -2004,22 +1825,22 @@ export default function App() {
       setUser(fullUser);
       setRole(userRole);
       
-      // No session persistence - OAuth tokens expire
-      // Users must sign in fresh each time for Google Sheets sync
+      console.log('✅ Data loaded from Firestore, user signed in:', userInfo.email);
     } catch (error) {
-      console.error("Error loading data:", error);
-      alert("Failed to load data from Google Sheets. Check console for details.");
+      console.error("Error loading data from Firestore:", error);
+      alert("Failed to load data from Firestore. Check console for details.");
     }
     
     setLoading(false);
   }
 
   // Handle Sign Out
-  function handleSignOut() {
-    accessToken = null; // Clear the OAuth token
+  async function handleSignOut() {
+    await logOut(); // Firebase sign out
     setUser(null);
     setRole(null);
     setSection("Dashboard");
+    console.log('👋 User signed out');
   }
 
   useEffect(() => { setSection("Dashboard"); }, [role]);
