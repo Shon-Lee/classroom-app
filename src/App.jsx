@@ -580,7 +580,7 @@ function StudentDashboard({ tasks, announcements }) {
   const overdue  = tasks.filter(t => t.status === "Overdue");
   const upcoming = tasks.filter(t => ["Due Soon", "Published"].includes(t.status));
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 32, width: "100%" }}>
       <div style={{ background: T.accent, borderRadius: 22, padding: "30px 34px", color: "#fff" }}>
         <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 5 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
         <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.02em" }}>Good morning, Alex 👋</div>
@@ -671,7 +671,7 @@ function StudentTasks({ tasks }) {
   const [filter, setFilter] = useState("All");
   const filtered = filter === "All" ? tasks : tasks.filter(t => t.status === filter);
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       <SectionTitle sub="Click any task to open it and submit your work.">My Tasks</SectionTitle>
       <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
         {filters.map(f => (
@@ -688,12 +688,12 @@ function StudentTasks({ tasks }) {
 
 // ─── ADMIN USERS PAGE (tabbed: Students / Staff) ────────────────────────────
 
-function AdminUsers({ students, setStudents, classes }) {
+function AdminUsers({ students, setStudents, classes, staff }) {
   const [tab, setTab] = useState("students");
   const unassigned = students.filter(s => s.classIds.length === 0);
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
         <SectionTitle sub="Manage all students and staff members in one place." />
       </div>
@@ -703,7 +703,7 @@ function AdminUsers({ students, setStudents, classes }) {
         onChange={setTab}
         tabs={[
           { id: "students", label: "Students", icon: <Icon.GraduationCap />, count: students.length },
-          { id: "staff",    label: "Staff",    icon: <Icon.UserCheck />, count: STAFF_INIT.length },
+          { id: "staff",    label: "Staff",    icon: <Icon.UserCheck />, count: staff.length },
         ]}
       />
 
@@ -711,7 +711,7 @@ function AdminUsers({ students, setStudents, classes }) {
         <StudentsTab students={students} setStudents={setStudents} classes={classes} unassignedCount={unassigned.length} />
       )}
       {tab === "staff" && (
-        <StaffTab classes={classes} />
+        <StaffTab classes={classes} staff={staff} />
       )}
     </div>
   );
@@ -912,11 +912,11 @@ function StudentsTab({ students, setStudents, classes, unassignedCount }) {
 
 // ── STAFF TAB ─────────────────────────────────────────────────────────────────
 
-function StaffTab({ classes }) {
+function StaffTab({ classes, staff }) {
   const [search, setSearch] = useState("");
   const [addOpen, setAddOpen] = useState(false);
 
-  const filtered = STAFF_INIT.filter(s =>
+  const filtered = staff.filter(s =>
     s.name.toLowerCase().includes(search.toLowerCase()) || s.email.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -1016,13 +1016,13 @@ function StaffDashboard({ submissions, setActive, classes, user }) {
   const myClasses = classes.filter(c => user.classIds.includes(c.id));
   const needsGrading = submissions.filter(s => s.status === "Submitted" && user.classIds.includes(s.classId)).length;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28, width: "100%" }}>
       <div style={{ background: T.accent, borderRadius: 22, padding: "26px 30px", color: "#fff" }}>
         <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 5 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
         <div style={{ fontSize: 24, fontWeight: 800 }}>Welcome back, {user.name.split(" ")[1]} 👋</div>
         <div style={{ opacity: 0.78, marginTop: 6, fontSize: 14 }}>You're teaching {myClasses.map(c => c.name).join(" & ")}.</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
         {[
           { label: "My Classes",    value: myClasses.length, icon: <Icon.School />, col: { fg: T.accent, bg: T.accentBg } },
           { label: "Needs Grading", value: needsGrading,     icon: <Icon.FileEdit />, col: T.dueSoon },
@@ -1054,11 +1054,11 @@ function StaffDashboard({ submissions, setActive, classes, user }) {
 function StaffMyClasses({ classes, user }) {
   const myClasses = classes.filter(c => user.classIds.includes(c.id));
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       <PermissionNote text="You can only see and manage classes that have been assigned to you by the admin." />
       <SectionTitle sub="Classes you are currently teaching.">My Classes</SectionTitle>
       {myClasses.length === 0 ? <EmptyState icon={<Icon.School />} text="No classes assigned yet. Contact your admin." /> : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 16 }}>
           {myClasses.map(c => (
             <Card key={c.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
@@ -1218,9 +1218,9 @@ function StaffAnnouncements({ announcements, setAnnouncements, role, classes, us
   }
 
   return (
-    <div>
+    <div style={{ width: "100%" }}>
       {!isAdmin && <PermissionNote text="You can only post announcements to your assigned classes." />}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: 24 }}>
         <div>
           <SectionTitle sub={isAdmin ? "Post to any class or school-wide." : "Post to your assigned classes."}>New Announcement</SectionTitle>
           {posted && <div style={{ background: T.graded.bg, border: `1px solid ${T.graded.border}`, borderRadius: 12, padding: "12px 20px", marginBottom: 16, fontSize: 14, color: T.graded.fg, fontWeight: 600 }}>✓ Posted! Students can see it now.</div>}
@@ -1360,23 +1360,23 @@ function AdminAssignTasks({ staffTasks, setStaffTasks, staff }) {
   );
 }
 
-function AdminClasses({ classes, setClasses, knowledge, setKnowledge }) {
+function AdminClasses({ classes, setClasses, knowledge, setKnowledge, staff }) {
   const [showModal, setShowModal] = useState(false);
   const [newClassName, setNewClassName] = useState("");
-  const [selectedStaff, setSelectedStaff] = useState(STAFF_INIT[0].id);
+  const [selectedStaff, setSelectedStaff] = useState(staff[0]?.id || 1);
   const [templateClass, setTemplateClass] = useState("blank");
 
   function handleCreateClass() {
     if (!newClassName.trim()) return;
     
     const newId = Math.max(...classes.map(c => c.id), 0) + 1;
-    const staff = STAFF_INIT.find(s => s.id === selectedStaff);
+    const staffMember = staff.find(s => s.id === selectedStaff);
     
     const newClass = {
       id: newId,
       name: newClassName.trim(),
       staffId: selectedStaff,
-      staffName: staff.name,
+      staffName: staffMember.name,
       students: 0,
       tasks: 0,
       documents: []
@@ -1947,8 +1947,8 @@ export default function App() {
     }
     if (role === "Admin") {
       if (section === "Dashboard")     return <AdminDashboard tickets={tickets} setActive={setSection} students={students} staff={staff} classes={classes} />;
-      if (section === "Users")         return <AdminUsers students={students} setStudents={setStudents} classes={classes} />;
-      if (section === "Classes")       return <AdminClasses classes={classes} setClasses={setClasses} knowledge={knowledge} setKnowledge={setKnowledge} />;
+      if (section === "Users")         return <AdminUsers students={students} setStudents={setStudents} classes={classes} staff={staff} />;
+      if (section === "Classes")       return <AdminClasses classes={classes} setClasses={setClasses} knowledge={knowledge} setKnowledge={setKnowledge} staff={staff} />;
       if (section === "Assign Tasks")  return <AdminAssignTasks staffTasks={staffTasks} setStaffTasks={setStaffTasks} staff={staff} />;
       if (section === "Announcements") return <StaffAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} role="Admin" classes={classes} user={user} />;
       if (section === "Tickets")       return <AdminTickets tickets={tickets} setTickets={setTickets} />;
