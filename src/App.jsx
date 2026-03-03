@@ -1868,25 +1868,10 @@ export default function App() {
   useEffect(() => {
     const savedSession = localStorage.getItem('classroomSession');
     if (savedSession) {
-      try {
-        const session = JSON.parse(savedSession);
-        setUser(session.user);
-        setRole(session.role);
-        // Note: accessToken is NOT restored - it expires after 1 hour
-        // User needs to sign out and back in to get a fresh token
-        setStudents(session.students || STUDENTS_INIT);
-        setStaff(session.staff || STAFF_INIT);
-        setClasses(session.classes || CLASSES_INIT);
-        setAnnouncements(session.announcements || ANNOUNCEMENTS_INIT);
-        setStaffTasks(session.staffTasks || STAFF_TASKS_INIT);
-        setTickets(session.tickets || TICKETS_INIT);
-        setKnowledge(session.knowledge || KNOWLEDGE_INIT);
-        setStudentTasks(session.studentTasks || STUDENT_TASKS_INIT);
-        setSubmissions(session.submissions || SUBMISSIONS_DATA);
-      } catch (error) {
-        console.error('Failed to restore session:', error);
-        localStorage.removeItem('classroomSession');
-      }
+      // Session persistence is disabled because OAuth tokens expire
+      // Users must sign in fresh each time to get a valid access token for Google Sheets sync
+      console.log('⚠️ Clearing saved session - fresh sign-in required for Google Sheets sync');
+      localStorage.removeItem('classroomSession');
     }
     setLoading(false);
   }, []);
@@ -1946,26 +1931,6 @@ export default function App() {
     }
   }, [submissions, user]);
 
-  // Update localStorage session when data changes
-  useEffect(() => {
-    if (user && role) {
-      localStorage.setItem('classroomSession', JSON.stringify({
-        user,
-        role,
-        // accessToken is NOT saved - it expires after 1 hour
-        students,
-        staff,
-        classes,
-        announcements,
-        staffTasks,
-        tickets,
-        knowledge,
-        studentTasks,
-        submissions
-      }));
-    }
-  }, [user, role, students, staff, classes, announcements, staffTasks, tickets, knowledge, studentTasks, submissions]);
-
   // Handle Google Sign-In
   async function handleSignIn(userInfo) {
     setLoading(true);
@@ -2019,21 +1984,8 @@ export default function App() {
       setUser(fullUser);
       setRole(userRole);
       
-      // Save session to localStorage
-      localStorage.setItem('classroomSession', JSON.stringify({
-        user: fullUser,
-        role: userRole,
-        // accessToken is NOT saved - it expires after 1 hour
-        students: loadedStudents,
-        staff: loadedStaff,
-        classes: loadedClasses,
-        announcements: loadedAnnouncements,
-        staffTasks: loadedStaffTasks,
-        tickets: loadedTickets,
-        knowledge: loadedKnowledge,
-        studentTasks: loadedStudentTasks,
-        submissions: loadedSubmissions
-      }));
+      // No session persistence - OAuth tokens expire
+      // Users must sign in fresh each time for Google Sheets sync
     } catch (error) {
       console.error("Error loading data:", error);
       alert("Failed to load data from Google Sheets. Check console for details.");
@@ -2044,7 +1996,7 @@ export default function App() {
 
   // Handle Sign Out
   function handleSignOut() {
-    localStorage.removeItem('classroomSession');
+    accessToken = null; // Clear the OAuth token
     setUser(null);
     setRole(null);
     setSection("Dashboard");
