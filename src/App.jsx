@@ -1255,8 +1255,8 @@ function AdminDashboard({ tickets, setActive, students }) {
   const unassigned = students.filter(s => s.classIds.length === 0).length;
   const openTickets = tickets.filter(t => t.status === "Open").length;
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28, width: "100%" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         {[
           { label: "Total Students",   value: students.length,   icon: <Icon.GraduationCap />, col: T.accent },
           { label: "Staff Members",    value: STAFF_INIT.length, icon: <Icon.UserCheck />, col: T.submitted },
@@ -1286,7 +1286,7 @@ function AdminDashboard({ tickets, setActive, students }) {
       </div>
       <div>
         <SectionTitle sub="All classes and their assigned staff.">Classes</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 16 }}>
           {CLASSES_INIT.map(c => (
             <Card key={c.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
@@ -1928,9 +1928,9 @@ export default function App() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
       <TopBar role={role} setRole={setRole} userName={userName} ticketCount={openTicketCount} />
-      <div style={{ display: "flex", height: "calc(100vh - 66px)" }}>
+      <div style={{ display: "flex", height: "calc(100vh - 66px)", width: "100%" }}>
         <Sidebar role={role} active={section} setActive={setSection} ticketBadge={openTicketCount} />
-        <main style={{ flex: 1, overflowY: "auto", padding: "34px 40px" }}>
+        <main style={{ flex: 1, overflowY: "auto", padding: "34px 40px", width: "100%", maxWidth: "100%" }}>
           {renderContent()}
         </main>
       </div>
