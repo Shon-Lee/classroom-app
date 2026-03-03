@@ -532,9 +532,9 @@ function GoogleSignIn({ onSignIn }) {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito', sans-serif" }}>
+    <div style={{ minHeight: "100vh", background: T.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Nunito', sans-serif", padding: "20px" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap'); * { box-sizing: border-box; margin: 0; padding: 0; }`}</style>
-      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 24, padding: "52px 48px", width: 420, textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.07)" }}>
+      <div style={{ background: T.surface, border: `1px solid ${T.border}`, borderRadius: 24, padding: "52px 48px", width: "100%", maxWidth: 420, textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.07)" }}>
         <div style={{ width: 56, height: 56, borderRadius: 16, background: T.accent, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 800, fontSize: 26, margin: "0 auto 20px" }}>C</div>
         <div style={{ fontSize: 24, fontWeight: 800, color: T.text, marginBottom: 8, letterSpacing: "-0.02em" }}>Welcome to ClassRoom</div>
         <div style={{ fontSize: 14, color: T.muted, marginBottom: 36, lineHeight: 1.6 }}>Sign in with your school Google account to access your classes, tasks, and grades.</div>
