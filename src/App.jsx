@@ -94,21 +94,35 @@ async function getSheetData(sheetName, range = 'A:Z') {
 
 // Update data in Google Sheets
 async function updateSheetData(sheetName, data) {
-  if (!accessToken || !data || data.length === 0) return;
+  if (!accessToken) {
+    console.warn(`⚠️ Cannot sync ${sheetName}: No access token. Please sign out and sign back in.`);
+    return;
+  }
+  if (!data || data.length === 0) {
+    console.log(`⏭️ Skipping ${sheetName}: No data to sync`);
+    return;
+  }
   
   try {
+    console.log(`📤 Syncing ${data.length} rows to ${sheetName}...`);
+    
     // Get headers from first object
     const headers = Object.keys(data[0]);
     const rows = [headers, ...data.map(obj => headers.map(h => obj[h] || ''))];
     
-    await gapi.client.sheets.spreadsheets.values.update({
+    const response = await gapi.client.sheets.spreadsheets.values.update({
       spreadsheetId: GOOGLE_CONFIG.spreadsheetId,
       range: `${sheetName}!A:Z`,
       valueInputOption: 'RAW',
       resource: { values: rows },
     });
+    
+    console.log(`✅ Successfully synced ${sheetName}: ${response.result.updatedRows} rows`);
   } catch (error) {
-    console.error(`Error updating ${sheetName}:`, error);
+    console.error(`❌ Error updating ${sheetName}:`, error);
+    if (error.status === 401) {
+      console.error('🔑 Access token expired. Please sign out and sign back in.');
+    }
   }
 }
 
@@ -1858,9 +1872,8 @@ export default function App() {
         const session = JSON.parse(savedSession);
         setUser(session.user);
         setRole(session.role);
-        if (session.accessToken) {
-          accessToken = session.accessToken;
-        }
+        // Note: accessToken is NOT restored - it expires after 1 hour
+        // User needs to sign out and back in to get a fresh token
         setStudents(session.students || STUDENTS_INIT);
         setStaff(session.staff || STAFF_INIT);
         setClasses(session.classes || CLASSES_INIT);
@@ -1939,7 +1952,7 @@ export default function App() {
       localStorage.setItem('classroomSession', JSON.stringify({
         user,
         role,
-        accessToken,
+        // accessToken is NOT saved - it expires after 1 hour
         students,
         staff,
         classes,
@@ -2010,7 +2023,7 @@ export default function App() {
       localStorage.setItem('classroomSession', JSON.stringify({
         user: fullUser,
         role: userRole,
-        accessToken,
+        // accessToken is NOT saved - it expires after 1 hour
         students: loadedStudents,
         staff: loadedStaff,
         classes: loadedClasses,
