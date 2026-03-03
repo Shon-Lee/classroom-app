@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 // ─── GOOGLE API CONFIGURATION ─────────────────────────────────────────────
 // Add your Google API credentials here
 const GOOGLE_CONFIG = {
-  clientId: "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com",
-  apiKey: "YOUR_GOOGLE_API_KEY",
-  spreadsheetId: "YOUR_GOOGLE_SHEET_ID", // The ID of your Google Sheet
+  clientId: "783727248696-tnc8lnu3mtuheb2gqhlnu79k89obbur2.apps.googleusercontent.com",
+  apiKey: "AIzaSyDmuJgZTpIxQQkS2orSgTKsc4QwJ1iKQdc",
+  spreadsheetId: "1g2fevLQ4vMuyLceuGodd2k5XvRbLpDGm6RA8Yy6Vd64", // The ID of your Google Sheet
   scopes: "https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile"
 };
 
@@ -1769,9 +1769,9 @@ function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, 
 // Determine user role from email and Google Sheets data
 async function determineUserRole(email, students, staff) {
   // Check if admin (you can customize this logic)
-  const adminEmails = ["admin@school.edu", "william.park@school.edu"];
+  const adminEmails = ["lebuibaoson.work@gmail.com"];
   if (adminEmails.includes(email.toLowerCase())) {
-    return { role: "Admin", userData: { name: "Dr. William Park", email, id: 1 } };
+    return { role: "Admin", userData: { name: "Admin", email, id: 1 } };
   }
   
   // Check if staff
