@@ -1012,14 +1012,14 @@ function StaffTab({ classes }) {
 
 // ─── STAFF VIEWS ───────────────────────────────────────────────────────────
 
-function StaffDashboard({ submissions, setActive }) {
-  const myClasses = CLASSES_INIT.filter(c => STAFF_CURRENT.classIds.includes(c.id));
-  const needsGrading = submissions.filter(s => s.status === "Submitted" && STAFF_CURRENT.classIds.includes(s.classId)).length;
+function StaffDashboard({ submissions, setActive, classes, user }) {
+  const myClasses = classes.filter(c => user.classIds.includes(c.id));
+  const needsGrading = submissions.filter(s => s.status === "Submitted" && user.classIds.includes(s.classId)).length;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <div style={{ background: T.accent, borderRadius: 22, padding: "26px 30px", color: "#fff" }}>
         <div style={{ fontSize: 13, opacity: 0.65, marginBottom: 5 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</div>
-        <div style={{ fontSize: 24, fontWeight: 800 }}>Welcome back, {STAFF_CURRENT.name.split(" ")[1]} 👋</div>
+        <div style={{ fontSize: 24, fontWeight: 800 }}>Welcome back, {user.name.split(" ")[1]} 👋</div>
         <div style={{ opacity: 0.78, marginTop: 6, fontSize: 14 }}>You're teaching {myClasses.map(c => c.name).join(" & ")}.</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
@@ -1045,14 +1045,14 @@ function StaffDashboard({ submissions, setActive }) {
       </div>
       <div>
         <SectionTitle sub="Submissions waiting to be graded.">Needs Grading</SectionTitle>
-        <SubmissionsTable submissions={submissions.filter(s => s.status === "Submitted" && STAFF_CURRENT.classIds.includes(s.classId))} />
+        <SubmissionsTable submissions={submissions.filter(s => s.status === "Submitted" && user.classIds.includes(s.classId))} />
       </div>
     </div>
   );
 }
 
-function StaffMyClasses() {
-  const myClasses = CLASSES_INIT.filter(c => STAFF_CURRENT.classIds.includes(c.id));
+function StaffMyClasses({ classes, user }) {
+  const myClasses = classes.filter(c => user.classIds.includes(c.id));
   return (
     <div>
       <PermissionNote text="You can only see and manage classes that have been assigned to you by the admin." />
@@ -1202,17 +1202,17 @@ function SendTicket({ tickets, setTickets }) {
   );
 }
 
-function StaffAnnouncements({ announcements, setAnnouncements, role }) {
+function StaffAnnouncements({ announcements, setAnnouncements, role, classes, user }) {
   const isAdmin = role === "Admin";
-  const myClasses = isAdmin ? CLASSES_INIT : CLASSES_INIT.filter(c => STAFF_CURRENT.classIds.includes(c.id));
+  const myClasses = isAdmin ? classes : classes.filter(c => user?.classIds?.includes(c.id));
   const [form, setForm] = useState({ title: "", classId: "", content: "" });
   const [posted, setPosted] = useState(false);
-  const myAnnouncements = isAdmin ? announcements : announcements.filter(a => a.classId !== null && STAFF_CURRENT.classIds.includes(a.classId));
+  const myAnnouncements = isAdmin ? announcements : announcements.filter(a => a.classId !== null && user?.classIds?.includes(a.classId));
 
   function handlePost() {
     if (!form.title || !form.content) return;
-    const cls = isAdmin && !form.classId ? null : CLASSES_INIT.find(c => c.id === parseInt(form.classId));
-    setAnnouncements([{ id: announcements.length + 1, title: form.title, classId: cls ? cls.id : null, className: cls ? cls.name : "All Classes", authorName: isAdmin ? "Dr. William Park" : STAFF_CURRENT.name, role: isAdmin ? "Admin" : "Staff", date: "Today", content: form.content }, ...announcements]);
+    const cls = isAdmin && !form.classId ? null : classes.find(c => c.id === parseInt(form.classId));
+    setAnnouncements([{ id: announcements.length + 1, title: form.title, classId: cls ? cls.id : null, className: cls ? cls.name : "All Classes", authorName: user?.name || "Staff", role: isAdmin ? "Admin" : "Staff", date: "Today", content: form.content }, ...announcements]);
     setForm({ title: "", classId: "", content: "" });
     setPosted(true); setTimeout(() => setPosted(false), 3000);
   }
@@ -1251,7 +1251,7 @@ function StaffAnnouncements({ announcements, setAnnouncements, role }) {
 
 // ─── ADMIN VIEWS ───────────────────────────────────────────────────────────
 
-function AdminDashboard({ tickets, setActive, students }) {
+function AdminDashboard({ tickets, setActive, students, staff, classes }) {
   const unassigned = students.filter(s => s.classIds.length === 0).length;
   const openTickets = tickets.filter(t => t.status === "Open").length;
   return (
@@ -1259,7 +1259,7 @@ function AdminDashboard({ tickets, setActive, students }) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
         {[
           { label: "Total Students",   value: students.length,   icon: <Icon.GraduationCap />, col: T.accent },
-          { label: "Staff Members",    value: STAFF_INIT.length, icon: <Icon.UserCheck />, col: T.submitted },
+          { label: "Staff Members",    value: staff.length, icon: <Icon.UserCheck />, col: T.submitted },
           { label: "Unassigned",       value: unassigned,        icon: <Icon.User />,  col: unassigned > 0 ? T.dueSoon : { fg: T.muted, bg: T.bg } },
           { label: "Open Tickets",     value: openTickets,       icon: <Icon.Ticket />,  col: openTickets > 0 ? T.overdue : { fg: T.muted, bg: T.bg } },
         ].map(s => (
@@ -1287,7 +1287,7 @@ function AdminDashboard({ tickets, setActive, students }) {
       <div>
         <SectionTitle sub="All classes and their assigned staff.">Classes</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))", gap: 16 }}>
-          {CLASSES_INIT.map(c => (
+          {classes.map(c => (
             <Card key={c.id}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
                 <div><div style={{ fontSize: 16, fontWeight: 800, color: T.text, marginBottom: 4 }}>{c.name}</div><div style={{ fontSize: 13, color: T.muted }}>👤 {c.staffName}</div></div>
@@ -1309,14 +1309,14 @@ function AdminDashboard({ tickets, setActive, students }) {
   );
 }
 
-function AdminAssignTasks({ staffTasks, setStaffTasks }) {
+function AdminAssignTasks({ staffTasks, setStaffTasks, staff }) {
   const [form, setForm] = useState({ title: "", staffId: "", dueDate: "", note: "" });
   const [assigned, setAssigned] = useState(false);
   const up = (k, v) => setForm(f => ({ ...f, [k]: v }));
   function handleAssign() {
     if (!form.title || !form.staffId) return;
-    const staff = STAFF_INIT.find(s => s.id === parseInt(form.staffId));
-    setStaffTasks([{ id: staffTasks.length + 1, title: form.title, assignedTo: staff.id, assignedToName: staff.name, dueDate: form.dueDate || "TBD", status: "Open", note: form.note }, ...staffTasks]);
+    const staffMember = staff.find(s => s.id === parseInt(form.staffId));
+    setStaffTasks([{ id: staffTasks.length + 1, title: form.title, assignedTo: staffMember.id, assignedToName: staffMember.name, dueDate: form.dueDate || "TBD", status: "Open", note: form.note }, ...staffTasks]);
     setForm({ title: "", staffId: "", dueDate: "", note: "" });
     setAssigned(true); setTimeout(() => setAssigned(false), 3000);
   }
@@ -1334,7 +1334,7 @@ function AdminAssignTasks({ staffTasks, setStaffTasks }) {
                 <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 7 }}>Assign To (Staff Member)</label>
                 <select value={form.staffId} onChange={e => up("staffId", e.target.value)} style={{ width: "100%", background: T.surface, border: `1.5px solid ${T.border}`, borderRadius: 12, padding: "11px 15px", fontSize: 14, color: T.text, fontFamily: "inherit", outline: "none" }}>
                   <option value="">Select a staff member…</option>
-                  {STAFF_INIT.map(s => { const cls = CLASSES_INIT.filter(c => s.classIds.includes(c.id)).map(c => c.name).join(", "); return <option key={s.id} value={s.id}>{s.name}{cls ? ` — ${cls}` : ""}</option>; })}
+                  {staff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
               <FieldInput label="Due Date" type="date" value={form.dueDate} onChange={e => up("dueDate", e.target.value)} />
@@ -1561,12 +1561,12 @@ function TicketRow({ t, onClick }) {
   );
 }
 
-function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, setDocuments, userName }) {
+function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, setDocuments, userName, classes }) {
   const [search, setSearch] = useState("");
   const [selectedClass, setSelectedClass] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [newDoc, setNewDoc] = useState({ title: "", driveLink: "", tags: "", classId: "" });
-
+ 
   // Filter documents based on role
   let availableClassIds = [];
   if (role === "Student") {
@@ -1574,11 +1574,11 @@ function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, 
   } else if (role === "Staff") {
     availableClassIds = staffClassIds;
   } else if (role === "Admin") {
-    availableClassIds = CLASSES_INIT.map(c => c.id);
+    availableClassIds = classes.map(c => c.id);
   }
 
   const availableDocs = documents.filter(doc => availableClassIds.includes(doc.classId));
-  const availableClasses = CLASSES_INIT.filter(c => availableClassIds.includes(c.id));
+  const availableClasses = classes.filter(c => availableClassIds.includes(c.id));
 
   // Apply filters
   let filtered = availableDocs;
@@ -1652,7 +1652,7 @@ function Knowledge({ role, studentClassIds = [], staffClassIds = [], documents, 
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           {Object.entries(groupedDocs).map(([classId, docs]) => {
-            const classInfo = CLASSES_INIT.find(c => c.id === parseInt(classId));
+            const classInfo = classes.find(c => c.id === parseInt(classId));
             return (
               <div key={classId}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -1841,18 +1841,59 @@ export default function App() {
   // Handle Google Sign-In
   async function handleSignIn(userInfo) {
     setLoading(true);
-    const { role: userRole, userData, isNewUser } = await determineUserRole(userInfo.email, students, staff);
     
-    let finalUserData = userData;
-    
-    // If new user, create student record
-    if (isNewUser) {
-      finalUserData = await createNewStudent(userInfo);
-      setStudents([...students, finalUserData]);
+    // Load ALL data from Google Sheets
+    try {
+      const [
+        loadedClasses,
+        loadedStudents,
+        loadedStaff,
+        loadedKnowledge,
+        loadedAnnouncements,
+        loadedStaffTasks,
+        loadedTickets,
+        loadedStudentTasks,
+        loadedSubmissions
+      ] = await Promise.all([
+        getSheetData(SHEET_NAMES.CLASSES),
+        getSheetData(SHEET_NAMES.STUDENTS),
+        getSheetData(SHEET_NAMES.STAFF),
+        getSheetData(SHEET_NAMES.KNOWLEDGE),
+        getSheetData(SHEET_NAMES.ANNOUNCEMENTS),
+        getSheetData(SHEET_NAMES.STAFF_TASKS),
+        getSheetData(SHEET_NAMES.TICKETS),
+        getSheetData(SHEET_NAMES.STUDENT_TASKS),
+        getSheetData(SHEET_NAMES.SUBMISSIONS)
+      ]);
+      
+      // Update all state with loaded data
+      setClasses(loadedClasses);
+      setStudents(loadedStudents);
+      setStaff(loadedStaff);
+      setKnowledge(loadedKnowledge);
+      setAnnouncements(loadedAnnouncements);
+      setStaffTasks(loadedStaffTasks);
+      setTickets(loadedTickets);
+      setStudentTasks(loadedStudentTasks);
+      setSubmissions(loadedSubmissions);
+      
+      const { role: userRole, userData, isNewUser } = await determineUserRole(userInfo.email, loadedStudents, loadedStaff);
+      
+      let finalUserData = userData;
+      
+      // If new user, create student record
+      if (isNewUser) {
+        finalUserData = await createNewStudent(userInfo);
+        setStudents([...loadedStudents, finalUserData]);
+      }
+      
+      setUser({ ...userInfo, ...finalUserData });
+      setRole(userRole);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      alert("Failed to load data from Google Sheets. Check console for details.");
     }
     
-    setUser({ ...userInfo, ...finalUserData });
-    setRole(userRole);
     setLoading(false);
   }
 
@@ -1894,24 +1935,24 @@ export default function App() {
       if (section === "Dashboard")     return <StudentDashboard tasks={studentTasks.filter(t => userClassIds.includes(t.classId))} announcements={studentAnnouncements} />;
       if (section === "My Tasks")      return <StudentTasks tasks={studentTasks.filter(t => userClassIds.includes(t.classId))} />;
       if (section === "Announcements") return <div><SectionTitle sub="From your teachers and the school.">Announcements</SectionTitle><div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{studentAnnouncements.map(a => <AnnouncementCard key={a.id} a={a} />)}</div></div>;
-      if (section === "Knowledge")     return <Knowledge role="Student" studentClassIds={userClassIds} documents={knowledge} setDocuments={setKnowledge} userName={userName} />;
+      if (section === "Knowledge")     return <Knowledge role="Student" studentClassIds={userClassIds} documents={knowledge} setDocuments={setKnowledge} userName={userName} classes={classes} />;
     }
     if (role === "Staff") {
-      if (section === "Dashboard")     return <StaffDashboard submissions={submissions.filter(s => userClassIds.includes(s.classId))} setActive={setSection} />;
-      if (section === "My Classes")    return <StaffMyClasses />;
+      if (section === "Dashboard")     return <StaffDashboard submissions={submissions.filter(s => userClassIds.includes(s.classId))} setActive={setSection} classes={classes} user={user} />;
+      if (section === "My Classes")    return <StaffMyClasses classes={classes} user={user} />;
       if (section === "Submissions")   return <><SectionTitle sub="Click 'Grade' to open the grading panel.">Submissions</SectionTitle><SubmissionsTable submissions={submissions.filter(s => userClassIds.includes(s.classId))} /></>;
-      if (section === "Announcements") return <StaffAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} role="Staff" />;
-      if (section === "Knowledge")     return <Knowledge role="Staff" staffClassIds={userClassIds} documents={knowledge} setDocuments={setKnowledge} userName={userName} />;
+      if (section === "Announcements") return <StaffAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} role="Staff" classes={classes} user={user} />;
+      if (section === "Knowledge")     return <Knowledge role="Staff" staffClassIds={userClassIds} documents={knowledge} setDocuments={setKnowledge} userName={userName} classes={classes} />;
       if (section === "Send Ticket")   return <SendTicket tickets={tickets} setTickets={setTickets} />;
     }
     if (role === "Admin") {
-      if (section === "Dashboard")     return <AdminDashboard tickets={tickets} setActive={setSection} students={students} />;
+      if (section === "Dashboard")     return <AdminDashboard tickets={tickets} setActive={setSection} students={students} staff={staff} classes={classes} />;
       if (section === "Users")         return <AdminUsers students={students} setStudents={setStudents} classes={classes} />;
       if (section === "Classes")       return <AdminClasses classes={classes} setClasses={setClasses} knowledge={knowledge} setKnowledge={setKnowledge} />;
-      if (section === "Assign Tasks")  return <AdminAssignTasks staffTasks={staffTasks} setStaffTasks={setStaffTasks} />;
-      if (section === "Announcements") return <StaffAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} role="Admin" />;
+      if (section === "Assign Tasks")  return <AdminAssignTasks staffTasks={staffTasks} setStaffTasks={setStaffTasks} staff={staff} />;
+      if (section === "Announcements") return <StaffAnnouncements announcements={announcements} setAnnouncements={setAnnouncements} role="Admin" classes={classes} user={user} />;
       if (section === "Tickets")       return <AdminTickets tickets={tickets} setTickets={setTickets} />;
-      if (section === "Knowledge")     return <Knowledge role="Admin" documents={knowledge} setDocuments={setKnowledge} userName={userName} />;
+      if (section === "Knowledge")     return <Knowledge role="Admin" documents={knowledge} setDocuments={setKnowledge} userName={userName} classes={classes} />;
     }
     return <EmptyState icon={<Icon.Construction />} text="This section is coming soon." />;
   }
