@@ -1875,6 +1875,80 @@ export default function App() {
     setLoading(false);
   }, []);
 
+  // Auto-sync data to Google Sheets when state changes
+  useEffect(() => {
+    if (user && students.length > 0) {
+      updateSheetData(SHEET_NAMES.STUDENTS, students).catch(err => console.error('Failed to sync students:', err));
+    }
+  }, [students, user]);
+
+  useEffect(() => {
+    if (user && staff.length > 0) {
+      updateSheetData(SHEET_NAMES.STAFF, staff).catch(err => console.error('Failed to sync staff:', err));
+    }
+  }, [staff, user]);
+
+  useEffect(() => {
+    if (user && classes.length > 0) {
+      updateSheetData(SHEET_NAMES.CLASSES, classes).catch(err => console.error('Failed to sync classes:', err));
+    }
+  }, [classes, user]);
+
+  useEffect(() => {
+    if (user && announcements.length > 0) {
+      updateSheetData(SHEET_NAMES.ANNOUNCEMENTS, announcements).catch(err => console.error('Failed to sync announcements:', err));
+    }
+  }, [announcements, user]);
+
+  useEffect(() => {
+    if (user && staffTasks.length > 0) {
+      updateSheetData(SHEET_NAMES.STAFF_TASKS, staffTasks).catch(err => console.error('Failed to sync staff tasks:', err));
+    }
+  }, [staffTasks, user]);
+
+  useEffect(() => {
+    if (user && tickets.length > 0) {
+      updateSheetData(SHEET_NAMES.TICKETS, tickets).catch(err => console.error('Failed to sync tickets:', err));
+    }
+  }, [tickets, user]);
+
+  useEffect(() => {
+    if (user && knowledge.length > 0) {
+      updateSheetData(SHEET_NAMES.KNOWLEDGE, knowledge).catch(err => console.error('Failed to sync knowledge:', err));
+    }
+  }, [knowledge, user]);
+
+  useEffect(() => {
+    if (user && studentTasks.length > 0) {
+      updateSheetData(SHEET_NAMES.STUDENT_TASKS, studentTasks).catch(err => console.error('Failed to sync student tasks:', err));
+    }
+  }, [studentTasks, user]);
+
+  useEffect(() => {
+    if (user && submissions.length > 0) {
+      updateSheetData(SHEET_NAMES.SUBMISSIONS, submissions).catch(err => console.error('Failed to sync submissions:', err));
+    }
+  }, [submissions, user]);
+
+  // Update localStorage session when data changes
+  useEffect(() => {
+    if (user && role) {
+      localStorage.setItem('classroomSession', JSON.stringify({
+        user,
+        role,
+        students,
+        staff,
+        classes,
+        announcements,
+        staffTasks,
+        tickets,
+        knowledge,
+        studentTasks,
+        submissions
+      }));
+    }
+  }, [user, role, students, staff, classes, announcements, staffTasks, tickets, knowledge, studentTasks, submissions]);
+
   // Handle Google Sign-In
   async function handleSignIn(userInfo) {
     setLoading(true);
