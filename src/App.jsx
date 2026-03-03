@@ -94,6 +94,9 @@ async function getSheetData(sheetName, range = 'A:Z') {
 
 // Update data in Google Sheets
 async function updateSheetData(sheetName, data) {
+  console.log(`🔄 Sync triggered for ${sheetName} with ${data?.length || 0} rows`);
+  console.log(`🔑 accessToken available:`, !!accessToken);
+  
   if (!accessToken) {
     console.warn(`⚠️ Cannot sync ${sheetName}: No access token. Please sign out and sign back in.`);
     return;
@@ -128,18 +131,30 @@ async function updateSheetData(sheetName, data) {
 
 // Append row to Google Sheets
 async function appendSheetData(sheetName, data) {
-  if (!accessToken || !data) return;
+  if (!accessToken) {
+    console.error(`❌ Cannot append to ${sheetName}: No access token`);
+    return;
+  }
+  if (!data) {
+    console.error(`❌ Cannot append to ${sheetName}: No data provided`);
+    return;
+  }
   
   try {
+    console.log(`📝 Appending row to ${sheetName}:`, data);
     const values = [Object.values(data)];
-    await gapi.client.sheets.spreadsheets.values.append({
+    const response = await gapi.client.sheets.spreadsheets.values.append({
       spreadsheetId: GOOGLE_CONFIG.spreadsheetId,
       range: `${sheetName}!A:A`,
       valueInputOption: 'RAW',
       resource: { values },
     });
+    console.log(`✅ Successfully appended to ${sheetName}:`, response.result);
   } catch (error) {
-    console.error(`Error appending to ${sheetName}:`, error);
+    console.error(`❌ Error appending to ${sheetName}:`, error);
+    if (error.status === 401) {
+      console.error('🔑 Access token expired. Please sign out and sign back in.');
+    }
   }
 }
 
@@ -1818,6 +1833,8 @@ async function determineUserRole(email, students, staff) {
 
 // Create new student in Google Sheets
 async function createNewStudent(userInfo) {
+  console.log(`👤 Creating new student:`, userInfo);
+  
   const newStudent = {
     id: Date.now(),
     name: userInfo.name,
@@ -1829,7 +1846,10 @@ async function createNewStudent(userInfo) {
     joinDate: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   };
   
+  console.log(`📋 New student record:`, newStudent);
   await appendSheetData(SHEET_NAMES.STUDENTS, newStudent);
+  console.log(`✅ Student created and appended to sheet`);
+  
   return newStudent;
 }
 
