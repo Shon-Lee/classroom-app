@@ -1958,7 +1958,7 @@ export default function App() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: T.bg, fontFamily: "'Nunito', 'Segoe UI', sans-serif", color: T.text }}>
+    <div style={{ width: "100vw", height: "100vh", background: T.bg, fontFamily: "'Nunito', 'Segoe UI', sans-serif", color: T.text, overflow: "hidden" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1969,9 +1969,9 @@ export default function App() {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
       <TopBar role={role} setRole={setRole} userName={userName} ticketCount={openTicketCount} />
-      <div style={{ display: "flex", height: "calc(100vh - 66px)", width: "100%" }}>
+      <div style={{ display: "flex", height: "calc(100vh - 66px)", width: "100vw" }}>
         <Sidebar role={role} active={section} setActive={setSection} ticketBadge={openTicketCount} />
-        <main style={{ flex: 1, overflowY: "auto", padding: "34px 40px", width: "100%", maxWidth: "100%" }}>
+        <main style={{ flex: 1, overflowY: "auto", padding: "34px 40px", minWidth: 0 }}>
           {renderContent()}
         </main>
       </div>
